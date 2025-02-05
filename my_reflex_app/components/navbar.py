@@ -8,6 +8,8 @@ class NavBarState(rx.State):
         ("Budget","/budget"),
         ("Analysis","/analysis"),
         ("Accounts","/accounts"),
+        ("Upload","/upload"),
+        ("Admin","/admin"),
     ]
 
 

@@ -26,7 +26,9 @@ MarkupSafe==3.0.2
 mdurl==0.1.2
 more-itertools==10.6.0
 nh3==0.2.20
+numpy==2.2.2
 packaging==24.2
+pandas==2.2.3
 pipdeptree==2.16.2
 platformdirs==4.3.6
 psutil==6.1.1
@@ -38,6 +40,7 @@ python-dateutil==2.9.0.post0
 python-engineio==4.11.2
 python-multipart==0.0.20
 python-socketio==5.12.1
+pytz==2025.1
 PyYAML==6.0.2
 readme_renderer==44.0
 redis==5.2.1
@@ -62,6 +65,7 @@ tomlkit==0.13.2
 twine==6.1.0
 typer==0.15.1
 typing_extensions==4.12.2
+tzdata==2025.1
 urllib3==2.3.0
 uvicorn==0.34.0
 websockets==14.2

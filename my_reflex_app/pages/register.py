@@ -1,55 +1,17 @@
 import reflex as rx 
 from typing import List 
 from my_reflex_app.components.navbar import navbar
-from my_reflex_app.components.render_functions import show_hamburger
-
-
-
-
+import pandas as pd
+import io 
 
 class RegisterState(rx.State):
-    entries: List[str] = [
-        "Housing",
-        "Utilities",
-        "Food"
-        ]
+    entries: List[str] = []
     bank_account_transactions: List[dict] = []
 
-    @rx.event()
-    def update_data(self):
-        print("Updating data")
-        self.bank_account_transactions: List[dict] = [
-        {
-            "account": "Primary Checking",
-            "date": "2023-01-01",
-            "amount": 100
-        },
-        {
-            "account": "Savings",
-            "date": "2023-01-01",
-            "amount": 200
-        },
-        {
-            "account": "Credit Card",
-            "date": "2023-01-01",
-            "amount": 300
-        },
-        {
-            "account": "Checking",
-            "date": "2023-01-01",
-            "amount": 400
-        },
-        {
-            "account": "Savings",
-            "date": "2023-01-01",
-            "amount": 500
-        },
-        {
-            "account": "Credit Card",
-            "date": "2023-01-01",
-            "amount": 600
-        }
-    ]
+    @rx.event
+    def handle_upload(self, event):
+        self.entries = event.files
+
 
 def show_entry(entry: str):
     return rx.text(entry)
@@ -59,65 +21,26 @@ def show_transaction(transaction: dict):
     print(transaction)
     return rx.text(transaction)
 
-class DataTableState(rx.State):
-    data: List[dict] = []
-    columns: List[dict] = [
-        {
-            "title": "Account",
-            "data": "account"
-        },
-        {
-            "title": "Date",
-            "data": "date"
-        },
-        {
-            "title": "Amount",
-            "data": "amount",
-            'render': ['number', ',', '.', 0, '$']
-        }
-    ]
-    
-    def draw_event(self):
-        print("Draw event")
 
-    def select_event(self):
-        print("Select event")
+class State(rx.State):
+    """The app state."""
 
-    
+    filename: str = ""
 
-    @rx.event()
-    def update_data(self) -> List[dict]:
-        print("Updating data")
-        self.data = RegisterState.bank_account_transactions
+    @rx.event
+    async def handle_upload(
+        self, files: list[bytes]
+    ):
+        """Handle the upload of file(s).
 
-class datatable(rx.Component):
-    library = "datatables.net-react"
-    tag = "DataTable"
-    is_default = True
-    lib_dependencies: list[str] = [
-        "datatables.net-dt",
-        "datatables.net-select-dt",
-        "datatables.net-responsive-dt",
-    ]
-    def add_imports(self):
-        return {"": [
-            "datatables.net-select-dt",
-            "datatables.net-responsive-dt",
-            "datatables.net-dt/css/dataTables.dataTables.min.css"
-            ]
-            }
-    
-    def add_custom_code(self) -> List[str]:
-        return [
-            "import DT from 'datatables.net-dt';",
-            "DataTable.use(DT);"
-        ]
-    
-    # data: rx.Var[List[dict]] = DataTableState.data
-    columns: rx.Var[List[dict]] = DataTableState.columns
-    options: rx.Var[dict] = {}
-    # onDraw: rx.EventHandler
-    # onSelect: rx.EventHandler
+        Args:
+            files: The uploaded files.
+        """
+        current_file = files[0]
+        register_df = pd.read_csv(io.StringIO(current_file.decode("utf-8")))
+        print(register_df)
+
+color = "rgb(107,99,246)"
 
 rx.page(route="/register")
 def register():
@@ -125,37 +48,44 @@ def register():
         rx.vstack(
             navbar(),
             rx.heading("Register"),
-            rx.hstack(
-                rx.text("Transactions"),
-            
-            ),
-            rx.button(
-                "Load Transactions",
-                on_click=DataTableState.update_data
-            ),
-            
             rx.vstack(
-                rx.foreach(
-                RegisterState.bank_account_transactions,
-                show_transaction,
-            )
+        rx.upload(
+            rx.vstack(
+                rx.button(
+                    "Select File",
+                    color=color,
+                    bg="white",
+                    border=f"1px solid {color}",
+                ),
+                rx.text(
+                    "Drag and drop files here or click to select files"
+                ),
             ),
-            
-            datatable(
-                # onDraw=DataTableState.draw_event,
-                # onSelect=DataTableState.select_event,
-                options={
-                    "ajax": {
-                        "url": "http://localhost:8000/transactions",
-                        "type": "GET",
-                        "dataSrc": "",
-                     },
-                    # "data": DataTableState.data,
-                    "responsive": True,
-                    "select": True,
-                }
-            ),
-            rx.text(show_hamburger())
-
+            id="upload1",
+            border=f"1px dotted {color}",
+            padding="5em",
+            accept={
+                "text/csv": [".csv"],
+            },
+            max_files=5,
+            multiple=True,
+            on_drop=State.handle_upload,
         ),
+        rx.button(
+            "Upload",
+            on_click=State.handle_upload(
+                rx.upload_files(upload_id="upload1")
+            ),
+        ),
+        # rx.button(
+        #     "Clear",
+        #     on_click=rx.clear_selected_files("upload1"),
+        # ),
+        rx.cond(
+            State.filename,
+            rx.text(f"File uploaded: {State.filename}"),
+            rx.text("No file uploaded"),
+        )
+     )
     )
+)
