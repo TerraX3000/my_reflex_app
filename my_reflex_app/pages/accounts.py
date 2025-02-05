@@ -58,9 +58,8 @@ class AccountState(rx.State):
     def columns(self) -> List[str]:
         return [value["label"] for value in self.fields.values()]
 
-
     @rx.event
-    def update_boolean_field(self, value: bool, field: str):
+    def update_field(self, value: str, field: str | bool):
         self.current_values[field] = value
 
     @rx.event
@@ -228,6 +227,7 @@ def account_form_dialog() -> rx.Component:
                         rx.text(AccountState.fields[field]["label"]),
                         rx.input(
                             value=AccountState.current_values[field],
+                            on_change=lambda value: AccountState.update_field(value, field),
                             name=field,
                         )
                 )
@@ -239,7 +239,7 @@ def account_form_dialog() -> rx.Component:
             ("checkbox", rx.checkbox(
                 AccountState.fields[field]["label"],
                 checked=AccountState.current_values[field].bool(),
-                on_change=lambda value: AccountState.update_boolean_field(value, field),
+                on_change=lambda value: AccountState.update_field(value, field),
                 name=field,
                 )
             )
