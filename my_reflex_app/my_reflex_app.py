@@ -14,7 +14,15 @@ from my_reflex_app.pages import (
     upload,
 )
 
-app = rx.App()
+app = rx.App(
+    theme=rx.theme(
+        appearance="dark",
+        has_background=True,
+        radius="full",
+        accent_color="blue",
+        gray_color="slate",
+    )
+)
 app.add_page(index)
 app.add_page(budget)
 app.add_page(accounts)

@@ -34,6 +34,7 @@ class AccountState(rx.State):
         "type_field": "",
         "status_field": "",
         "date_field": "",
+        "date_format": "%Y-%m-%d",
         "is_reverse_negative_values": False,
         "include_pending_status": False
     })
@@ -43,6 +44,7 @@ class AccountState(rx.State):
         "id": {"type": "hidden", "label": "Account ID"},
         "name": {"type": "text", "label": "Account Name"},
         "date_field": {"type": "text", "label": "Date Field"},
+        "date_format": {"type": "text", "label": "Date Format"},
         "amount_field": {"type": "text", "label": "Amount Field"},
         "description_field": {"type": "text", "label": "Description Field"},
         "original_description_field": {"type": "text", "label": "Original Description Field"},
@@ -307,7 +309,8 @@ def accounts():
         rx.vstack(
             rx.heading("Accounts"),
             rx.dialog.root(
-                rx.dialog.trigger(rx.button("Add Account", on_click=AccountState.clear_selected_account)),
+                rx.dialog.trigger(
+                    rx.button("Add Account", on_click=AccountState.clear_selected_account)),
                 account_form_dialog(),
             ),
             rx.hstack(

@@ -1,91 +1,102 @@
 import reflex as rx 
 from typing import List 
 from my_reflex_app.components.navbar import navbar
+from my_reflex_app.models.models import Account, Transaction
 import pandas as pd
 import io 
+from datetime import date, datetime
 
 class RegisterState(rx.State):
-    entries: List[str] = []
-    bank_account_transactions: List[dict] = []
+    accounts: List[dict] = []
+    account_options: List[str] = []
+    selected_account: str = ""
+    transactions: List[dict] = []
+    start_date: str = ""
+    end_date: str = ""
 
     @rx.event
-    def handle_upload(self, event):
-        self.entries = event.files
+    def handle_start_date_change(self, value):
+        self.start_date = value
+        self.load_transactions()
+    @rx.event
+    def handle_end_date_change(self, value):
+        self.end_date = value
+        self.load_transactions()
 
-
-def show_entry(entry: str):
-    return rx.text(entry)
-
-
-def show_transaction(transaction: dict):
-    print(transaction)
-    return rx.text(transaction)
-
-
-class State(rx.State):
-    """The app state."""
-
-    filename: str = ""
+    def get_selected_account(self):
+        for account in self.accounts:
+            if account.name == self.selected_account:
+                return account
+            
+    @rx.event
+    def load_transactions(self):
+        account: Account = self.get_selected_account()
+        print(self.start_date, self.end_date, account)
+        if not all([account, self.start_date, self.end_date]):
+            self.transactions = []
+            return
+        with rx.session() as session:
+            self.transactions = session.exec(
+                Transaction.select()
+                .where(Transaction.account_id == account.id)
+                .where(Transaction.date >= self.start_date)
+                .where(Transaction.date <= self.end_date)
+                .order_by(Transaction.date)
+            ).all()
 
     @rx.event
-    async def handle_upload(
-        self, files: list[bytes]
-    ):
-        """Handle the upload of file(s).
+    def get_accounts(self):
+        with rx.session() as session:
+            self.accounts: List[Account] = session.exec(Account.select()).all()
+            self.account_options = []
+            for account in self.accounts:
+                self.account_options.append(str(account.name))
 
-        Args:
-            files: The uploaded files.
-        """
-        current_file = files[0]
-        register_df = pd.read_csv(io.StringIO(current_file.decode("utf-8")))
-        print(register_df)
+    @rx.event
+    def handle_select(self, account: str):
+        self.selected_account = account
+        self.load_transactions()
 
-color = "rgb(107,99,246)"
+def show_transaction_table():
+    def transaction_row(transaction: dict):
+        return rx.table.row(
+            rx.table.cell(transaction["date"]),
+            rx.table.cell(transaction["description"]),
+            rx.table.cell(transaction["amount"]),
+        )
+    return rx.table.root(
+        rx.table.header(
+            rx.table.row(
+                rx.table.column_header_cell("Date"),
+                rx.table.column_header_cell("Description"),
+                rx.table.column_header_cell("Amount"),
+            )
+        ),
+        rx.table.body(
+            rx.foreach(RegisterState.transactions, transaction_row)
+        )
+    )
 
-rx.page(route="/register")
+
+@rx.page(route="/register", on_load=RegisterState.get_accounts)
 def register():
     return rx.container(
         rx.vstack(
             navbar(),
             rx.heading("Register"),
-            rx.vstack(
-        rx.upload(
-            rx.vstack(
-                rx.button(
-                    "Select File",
-                    color=color,
-                    bg="white",
-                    border=f"1px solid {color}",
-                ),
-                rx.text(
-                    "Drag and drop files here or click to select files"
-                ),
+            rx.hstack(
+                rx.select(
+                items=RegisterState.account_options,
+                label="Select Account",
+                placeholder="Select an account",
+                on_change=RegisterState.handle_select,
+                value=RegisterState.selected_account
             ),
-            id="upload1",
-            border=f"1px dotted {color}",
-            padding="5em",
-            accept={
-                "text/csv": [".csv"],
-            },
-            max_files=5,
-            multiple=True,
-            on_drop=State.handle_upload,
-        ),
-        rx.button(
-            "Upload",
-            on_click=State.handle_upload(
-                rx.upload_files(upload_id="upload1")
+                rx.input(type="date", on_change=RegisterState.handle_start_date_change, default_value=str(date.today()), value=RegisterState.start_date),
+                rx.input(type="date", on_change=RegisterState.handle_end_date_change, default_value=str(date.today()), value=RegisterState.end_date),
             ),
-        ),
-        # rx.button(
-        #     "Clear",
-        #     on_click=rx.clear_selected_files("upload1"),
-        # ),
-        rx.cond(
-            State.filename,
-            rx.text(f"File uploaded: {State.filename}"),
-            rx.text("No file uploaded"),
+            rx.vstack(
+                show_transaction_table()
+            )
         )
-     )
-    )
 )

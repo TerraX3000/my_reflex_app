@@ -56,6 +56,7 @@ class Account(rx.Model, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(nullable=False, unique=True)
     date_field: str = Field(default="")
+    date_format: str = Field(default="%Y-%m-%d")
     amount_field: str = Field(default="")
     description_field: str = Field(default="")
     original_description_field: str = Field(default="")

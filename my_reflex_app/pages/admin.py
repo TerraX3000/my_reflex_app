@@ -1,6 +1,16 @@
 import reflex as rx
 from my_reflex_app.components.navbar import navbar
 from my_reflex_app.models.users import User
+from my_reflex_app.models.models import Transaction
+
+
+class ResetState(rx.State):
+
+    @rx.event
+    def reset_transactions(self):
+        with rx.session() as session:
+            session.query(Transaction).delete()
+            session.commit()
 
 class FormState(rx.State):
     form_data: dict = {}
@@ -48,5 +58,6 @@ def admin():
             navbar(),
             rx.heading("Admin"),
             add_user_form(),
+            rx.button("Reset", on_click=ResetState.reset_transactions),
         ),
     )
