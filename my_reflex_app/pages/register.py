@@ -4,15 +4,17 @@ from my_reflex_app.components.navbar import navbar
 from my_reflex_app.models.models import Account, Transaction
 import pandas as pd
 import io 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+
+
 
 class RegisterState(rx.State):
     accounts: List[dict] = []
     account_options: List[str] = []
     selected_account: str = ""
     transactions: List[dict] = []
-    start_date: str = ""
-    end_date: str = ""
+    start_date: str = str(date.today() - pd.Timedelta(days=30))
+    end_date: str = str(date.today())
 
     @rx.event
     def handle_start_date_change(self, value):
@@ -31,7 +33,6 @@ class RegisterState(rx.State):
     @rx.event
     def load_transactions(self):
         account: Account = self.get_selected_account()
-        print(self.start_date, self.end_date, account)
         if not all([account, self.start_date, self.end_date]):
             self.transactions = []
             return
@@ -55,6 +56,13 @@ class RegisterState(rx.State):
     @rx.event
     def handle_select(self, account: str):
         self.selected_account = account
+        self.load_transactions()
+
+    @rx.event
+    def clear_selections(self):
+        self.selected_account = ""
+        self.start_date  = str(date.today() - pd.Timedelta(days=30))
+        self.end_date = str(date.today())
         self.load_transactions()
 
 def show_transaction_table():
@@ -90,13 +98,15 @@ def register():
                 label="Select Account",
                 placeholder="Select an account",
                 on_change=RegisterState.handle_select,
-                value=RegisterState.selected_account
+                value=RegisterState.selected_account,
+                ),
+                rx.input(type="date", on_change=RegisterState.handle_start_date_change, value=RegisterState.start_date),
+                rx.input(type="date", on_change=RegisterState.handle_end_date_change, value=RegisterState.end_date),
+                rx.button("Clear", on_click=RegisterState.clear_selections),
             ),
-                rx.input(type="date", on_change=RegisterState.handle_start_date_change, default_value=str(date.today()), value=RegisterState.start_date),
-                rx.input(type="date", on_change=RegisterState.handle_end_date_change, default_value=str(date.today()), value=RegisterState.end_date),
             ),
             rx.vstack(
                 show_transaction_table()
             )
         )
-)
+        
