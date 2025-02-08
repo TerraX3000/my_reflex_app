@@ -26,7 +26,10 @@ class Category(rx.Model, table=True):
     # Relationships
     parent: Optional["Category"] = Relationship(
         back_populates="children",
-        sa_relationship_kwargs={"remote_side": "Category.id"},
+        sa_relationship_kwargs={
+            "remote_side": "Category.id",
+            "lazy": "joined"
+            },
     )
     children: List["Category"] = Relationship(
         back_populates="parent",

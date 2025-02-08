@@ -5,6 +5,7 @@ class NavBarState(rx.State):
     menu_bar_items: List[Tuple[str, str]] = [
         ("Home","/"),
         ("Register","/register"),
+        ("Categories","/categories"),
         ("Budget","/budget"),
         ("Analysis","/analysis"),
         ("Accounts","/accounts"),
