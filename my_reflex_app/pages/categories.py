@@ -14,7 +14,9 @@ class CategoryState(rx.State):
     category_options: List[str] = []
 
     def get_category_options(self):
-        self.category_options = [str(category.name) for category in self.categories if category.parent is None]
+        category_options = [str(category.name) for category in self.categories if category.parent is None]
+        category_options.sort()
+        self.category_options = category_options
 
     @rx.event
     def set_new_category(self, value):
@@ -51,9 +53,7 @@ class CategoryState(rx.State):
             self.categories = session.exec(
                 Category.select()
             ).all()
-            for category in self.categories:
-                if category.parent:
-                    print(category.parent.name)
+            
             self.get_category_options()
 
     @rx.event
@@ -72,11 +72,17 @@ class CategoryState(rx.State):
 def show_categories_table():
     def show_category(category: Category):
         return rx.table.row(
-            rx.table.cell(category.name),
             rx.table.cell(
             rx.cond(
                 category.parent,
                 category.parent.name,
+                category.name
+            )
+            ),
+            rx.table.cell(
+            rx.cond(
+                category.parent,
+                category.name,
                 ""
             )
             ),
@@ -112,7 +118,7 @@ def show_categories_table():
         rx.table.header(
             rx.table.row(
                 rx.table.column_header_cell("Category"),
-                rx.table.column_header_cell("Parent Category"),
+                rx.table.column_header_cell("Sub Category"),
                 rx.table.column_header_cell("Description"),
                 rx.table.column_header_cell("Actions"),
             )

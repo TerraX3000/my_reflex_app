@@ -4,6 +4,25 @@ from enum import Enum as PyEnum
 from typing import List, Optional
 from sqlmodel import Field, Relationship
 from sqlalchemy import Enum
+import dataclasses
+
+
+@dataclasses.dataclass
+class TransactionType:
+    id: int
+    date: str
+    description: str
+    original_description: str
+    bank_category: str
+    amount: float
+    bank_status: str
+    bank_type: str
+    gross_amount: float
+    category_id: int
+    account_id: int
+    category_name: str = ""
+    sub_category_name: str = ""
+
 
 
 # ✅ TimePeriod Enum
@@ -92,12 +111,45 @@ class Transaction(rx.Model, table=True):
     amount: float  # Net amount (after splits)
 
     # Relationships
-    category: "Category" = Relationship(back_populates="transactions")
+    category: "Category" = Relationship(
+        back_populates="transactions",
+        sa_relationship_kwargs={
+            "lazy": "joined"
+            },
+        )
     account: "Account" = Relationship(back_populates="transactions")
     splits: List["Split"] = Relationship(
         back_populates="transaction",
         cascade_delete=True,
     )
+
+    def to_dataclass(self) -> TransactionType:
+        if self.category:
+            if self.category.parent:
+                category_name = self.category.parent.name
+                sub_category_name = self.category.name
+            else:
+                category_name = self.category.name
+                sub_category_name = ""
+        else:
+            category_name = ""
+            sub_category_name = ""
+
+        return TransactionType(
+            id=self.id,
+            date=self.date,
+            description=self.description,
+            original_description=self.original_description,
+            bank_category=self.bank_category,
+            amount=self.amount,
+            bank_status=self.bank_status,
+            bank_type=self.bank_type,
+            gross_amount=self.gross_amount,
+            category_id=self.category_id,
+            account_id=self.account_id,
+            category_name=category_name,
+            sub_category_name=sub_category_name
+        )
 
 
 # ✅ Split Model
