@@ -1,7 +1,7 @@
 import reflex as rx 
 from typing import List 
 from my_reflex_app.components.navbar import navbar
-from my_reflex_app.models.models import Account, Transaction, Category, TransactionType
+from my_reflex_app.models.models import Account, Transaction, Category, TransactionType, Split, SplitType
 import pandas as pd
 import io 
 from datetime import date, datetime, timedelta
@@ -24,6 +24,7 @@ class RegisterState(rx.State):
     category_options: List[str] = []
     categories_with_sub_categories: List[str] = []
     sub_category_options: list[SubCategoryOption] = []
+    edit_transaction: TransactionType | None = None
 
     @rx.event
     def handle_start_date_change(self, value):
@@ -67,6 +68,84 @@ class RegisterState(rx.State):
     def handle_select(self, account: str):
         self.selected_account = account
         self.load_transactions()
+
+    @rx.event
+    def set_edit_transaction(self, transaction: TransactionType):
+        self.edit_transaction = transaction
+
+    @rx.event
+    def add_split(self):
+        with rx.session() as session:
+            split = Split(
+                transaction_id=self.edit_transaction.id,
+                amount=self.edit_transaction.amount,
+            )
+            session.add(split)
+            session.commit()
+        self.clear_transaction_category()
+        self.load_transactions()
+        self.refresh_edit_transaction()
+
+    @rx.event
+    def set_amount_for_split(self, amount: str, split_id: str):
+        with rx.session() as session:
+            split: Split = session.exec(
+                Split.select()
+                .where(Split.id == split_id)
+            ).first()
+            split.amount = amount
+            session.add(split)
+            session.commit()        
+        self.load_transactions()
+        self.refresh_edit_transaction()
+
+    @rx.event
+    def clear_transaction_category(self):
+        with rx.session() as session:
+            transaction: Transaction = session.exec(
+                Transaction.select()
+                .where(Transaction.id == self.edit_transaction.id)
+            ).first()
+            transaction.category_id = None
+            session.add(transaction)
+            session.commit()
+
+    @rx.event
+    def delete_split(self, split_id: int):
+        with rx.session() as session:
+            split: Split = session.exec(
+                Split.select()
+                .where(Split.id == split_id)
+            ).first()
+            session.delete(split)
+            session.commit()
+        self.load_transactions()
+        self.refresh_edit_transaction()
+
+    def refresh_edit_transaction(self):
+        with rx.session() as session:
+            transaction = session.exec(
+                Transaction.select()
+                .where(Transaction.id == self.edit_transaction.id)
+            ).first()
+            self.edit_transaction = transaction.to_dataclass()
+
+    @rx.event 
+    def set_category_for_split(self, category_name: str, split_id: str):
+        with rx.session() as session:
+            split: Split = session.exec(
+                Split.select()
+                .where(Split.id == split_id)
+            ).first()
+            category = session.exec(
+                Category.select()
+                .where(Category.name == category_name)
+            ).first()
+            split.category_id = category.id
+            session.add(split)
+            session.commit()
+        self.load_transactions()
+        self.refresh_edit_transaction()
 
     @rx.event
     def clear_selections(self):
@@ -120,7 +199,6 @@ class RegisterState(rx.State):
 
     @rx.event
     def set_category_for_transaction(self, category_name: str, transaction_id: str):
-        # print("set category", category_name, transaction_id)
         with rx.session() as session:
             category: Category = session.exec(
                 Category.select().where(Category.name == category_name)
@@ -132,6 +210,73 @@ class RegisterState(rx.State):
             session.add(transaction)
             session.commit()
         self.load_transactions()
+
+def split_transaction_dialog() -> rx.Component:
+    def show_split_row(split: SplitType):
+        def render_sub_category_options(sub_category_option: SubCategoryOption, split: SplitType):
+            return rx.cond(
+                split.category_name == sub_category_option.category_name,
+                rx.select.item(sub_category_option.sub_category_name, value=sub_category_option.sub_category_name),
+            )
+        return rx.table.row(
+            rx.table.cell(
+                rx.select(
+                    items=RegisterState.category_options,
+                    label="Select Category",
+                    placeholder="Select a category",
+                    on_change=lambda category: RegisterState.set_category_for_split(category, split.id),
+                    value=split.category_name,
+                )
+            ),
+            rx.cond(
+                RegisterState.categories_with_sub_categories.contains(split.category_name),
+                rx.table.cell(
+                    rx.select.root(
+                        rx.select.trigger(placeholder="Select a category"),
+                        rx.select.content(
+                            rx.select.group(
+                                rx.foreach(
+                                    RegisterState.sub_category_options,
+                                    lambda sub_category_option: render_sub_category_options(sub_category_option, split),
+                                ),
+                            ),
+                        ),
+                        on_change=lambda category: RegisterState.set_category_for_split(category, split.id),
+                        value=split.sub_category_name,
+                    ),
+                ),
+                rx.table.cell(""),
+            ),
+            rx.table.cell(
+                rx.input(
+                    on_change=lambda amount: RegisterState.set_amount_for_split(amount, split.id),
+                    value=split.amount,
+                )
+            ),
+            rx.table.cell(
+                rx.icon("trash", on_click=lambda: RegisterState.delete_split(split.id)),
+            ),
+        )
+
+    return rx.dialog.content(
+        # add table for split transactions with category, sub category, and amount
+        rx.hstack(
+            rx.button("Add Split", on_click=RegisterState.add_split),
+        ),
+        rx.table.root(
+            rx.table.header(
+                rx.table.row(
+                    rx.table.column_header_cell("Category"),
+                    rx.table.column_header_cell("Sub Category"),
+                    rx.table.column_header_cell("Amount"),
+                    rx.table.column_header_cell(""),
+                ),
+            ),
+            rx.table.body(
+                rx.foreach(RegisterState.edit_transaction.splits, show_split_row),
+            )
+        )
+    )
 
 def show_transaction_table():
 
@@ -146,14 +291,18 @@ def show_transaction_table():
             rx.table.cell(transaction.date),
             rx.table.cell(transaction.description),
             rx.table.cell(transaction.amount),
-            rx.table.cell(
-                rx.select(
-                    items=RegisterState.category_options,
-                    label="Select Category",
-                    placeholder="Select a category",
-                    on_change=lambda category: RegisterState.set_category_for_transaction(category, transaction.id),
-                    value=transaction.category_name,
-                )
+            rx.cond(
+                ~transaction.splits,
+                rx.table.cell(
+                    rx.select(
+                        items=RegisterState.category_options,
+                        label="Select Category",
+                        placeholder="Select a category",
+                        on_change=lambda category: RegisterState.set_category_for_transaction(category, transaction.id),
+                        value=transaction.category_name,
+                    ),
+                ),
+                rx.table.cell("Split Transaction"),
             ),
             rx.cond(
                 RegisterState.categories_with_sub_categories.contains(transaction.category_name),
@@ -173,6 +322,14 @@ def show_transaction_table():
                     ),
                 ),
                 rx.table.cell(""),
+            ),
+            rx.table.cell(
+                rx.hstack(
+                    rx.dialog.root(
+                        rx.dialog.trigger(rx.icon("pencil", on_click=RegisterState.set_edit_transaction(transaction))),
+                        split_transaction_dialog(),
+                    ),
+                )
             )
         )
     return rx.table.root(
@@ -183,6 +340,7 @@ def show_transaction_table():
                 rx.table.column_header_cell("Amount"),
                 rx.table.column_header_cell("Category"),
                 rx.table.column_header_cell("Sub Category"),
+                rx.table.column_header_cell(""),
             )
         ),
         rx.table.body(

@@ -8,6 +8,16 @@ import dataclasses
 
 
 @dataclasses.dataclass
+class SplitType:
+    id: int
+    transaction_id: int
+    category_id: int
+    description: str
+    amount: float
+    category_name: str = ""
+    sub_category_name: str = ""
+
+@dataclasses.dataclass
 class TransactionType:
     id: int
     date: str
@@ -20,6 +30,7 @@ class TransactionType:
     gross_amount: float
     category_id: int
     account_id: int
+    splits: List[SplitType]
     category_name: str = ""
     sub_category_name: str = ""
 
@@ -121,6 +132,7 @@ class Transaction(rx.Model, table=True):
     splits: List["Split"] = Relationship(
         back_populates="transaction",
         cascade_delete=True,
+        sa_relationship_kwargs={"lazy": "selectin"}, 
     )
 
     def to_dataclass(self) -> TransactionType:
@@ -148,7 +160,8 @@ class Transaction(rx.Model, table=True):
             category_id=self.category_id,
             account_id=self.account_id,
             category_name=category_name,
-            sub_category_name=sub_category_name
+            sub_category_name=sub_category_name,
+            splits=[split.to_dataclass() for split in self.splits],
         )
 
 
@@ -163,3 +176,25 @@ class Split(rx.Model, table=True):
     # Relationships
     transaction: "Transaction" = Relationship(back_populates="splits")
     category: Optional["Category"] = Relationship()
+
+    def to_dataclass(self) -> SplitType:
+        if self.category:
+            if self.category.parent:
+                category_name = self.category.parent.name
+                sub_category_name = self.category.name
+            else:
+                category_name = self.category.name
+                sub_category_name = ""
+        else:
+            category_name = ""
+            sub_category_name = ""
+
+        return SplitType(
+            id=self.id,
+            transaction_id=self.transaction_id,
+            category_id=self.category_id,
+            description=self.description,
+            amount=self.amount,
+            category_name=category_name,
+            sub_category_name=sub_category_name,
+        )
