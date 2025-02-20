@@ -14,6 +14,7 @@ class SplitType:
     category_id: int
     description: str
     amount: float
+    is_expense_category: bool
     category_name: str = ""
     sub_category_name: str = ""
 
@@ -51,6 +52,7 @@ class Category(rx.Model, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(nullable=False, unique=True)
     description: Optional[str] = None
+    is_expense_category: bool = Field(default=True)
     parent_id: Optional[int] = Field(default=None, foreign_key="category.id")
 
     # Relationships
@@ -118,7 +120,6 @@ class Transaction(rx.Model, table=True):
     bank_type: str
     category_id: int = Field(foreign_key="category.id", nullable=True)
     account_id: int = Field(foreign_key="account.id", nullable=False)
-    gross_amount: float | None = None  # Total before splits
     amount: float  # Net amount (after splits)
 
     # Relationships
@@ -140,10 +141,13 @@ class Transaction(rx.Model, table=True):
             if self.category.parent:
                 category_name = self.category.parent.name
                 sub_category_name = self.category.name
+                is_expense_category = self.category.is_expense_category
             else:
                 category_name = self.category.name
                 sub_category_name = ""
+                is_expense_category = self.category.is_expense_category
         else:
+            is_expense_category = True
             category_name = ""
             sub_category_name = ""
 
@@ -159,6 +163,7 @@ class Transaction(rx.Model, table=True):
             gross_amount=self.gross_amount,
             category_id=self.category_id,
             account_id=self.account_id,
+            is_expense_category=is_expense_category,
             category_name=category_name,
             sub_category_name=sub_category_name,
             splits=[split.to_dataclass() for split in self.splits],
