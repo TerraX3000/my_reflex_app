@@ -25,6 +25,8 @@ class RegisterState(rx.State):
     categories_with_sub_categories: List[str] = []
     sub_category_options: list[SubCategoryOption] = []
     edit_transaction: TransactionType | None = None
+    sum_of_splits: float = 0
+    remainder: float = 0
 
     @rx.event
     def handle_start_date_change(self, value):
@@ -72,22 +74,27 @@ class RegisterState(rx.State):
     @rx.event
     def set_edit_transaction(self, transaction: TransactionType):
         self.edit_transaction = transaction
+        self.sum_of_splits = sum([split["amount"] for split in self.edit_transaction.splits])
+        self.remainder = self.edit_transaction.amount - self.sum_of_splits
 
     @rx.event
     def add_split(self):
         with rx.session() as session:
             split = Split(
                 transaction_id=self.edit_transaction.id,
-                amount=self.edit_transaction.amount,
+                amount=0,
             )
             session.add(split)
             session.commit()
         self.clear_transaction_category()
         self.load_transactions()
         self.refresh_edit_transaction()
+        self.update_sum_of_splits()
 
     @rx.event
     def set_amount_for_split(self, amount: str, split_id: str):
+        if not amount:
+            amount = 0
         with rx.session() as session:
             split: Split = session.exec(
                 Split.select()
@@ -98,6 +105,12 @@ class RegisterState(rx.State):
             session.commit()        
         self.load_transactions()
         self.refresh_edit_transaction()
+        self.update_sum_of_splits()
+
+    
+    def update_sum_of_splits(self):
+        self.sum_of_splits = round(sum([split.amount for split in self.edit_transaction.splits]), 2)
+        self.remainder = round(self.edit_transaction.amount - self.sum_of_splits, 2)
 
     @rx.event
     def clear_transaction_category(self):
@@ -121,6 +134,7 @@ class RegisterState(rx.State):
             session.commit()
         self.load_transactions()
         self.refresh_edit_transaction()
+        self.update_sum_of_splits()
 
     def refresh_edit_transaction(self):
         with rx.session() as session:
@@ -154,7 +168,6 @@ class RegisterState(rx.State):
         self.end_date = str(date.today())
         self.load_transactions()
 
-    # @rx.event
     def get_category_options(self):
         with rx.session() as session:
             categories = session.exec(
@@ -251,6 +264,8 @@ def split_transaction_dialog() -> rx.Component:
                 rx.input(
                     on_change=lambda amount: RegisterState.set_amount_for_split(amount, split.id),
                     value=split.amount,
+                    type="number",
+                    step="0.01",
                 )
             ),
             rx.table.cell(
@@ -259,7 +274,7 @@ def split_transaction_dialog() -> rx.Component:
         )
 
     return rx.dialog.content(
-        # add table for split transactions with category, sub category, and amount
+        rx.dialog.title("Add Split Transaction"),
         rx.hstack(
             rx.button("Add Split", on_click=RegisterState.add_split),
         ),
@@ -274,6 +289,12 @@ def split_transaction_dialog() -> rx.Component:
             ),
             rx.table.body(
                 rx.foreach(RegisterState.edit_transaction.splits, show_split_row),
+            ),
+            rx.hstack(
+                rx.text(f"Total: {RegisterState.edit_transaction.amount}"),
+                rx.text(f"Split Total: {RegisterState.sum_of_splits}"),
+                rx.text(f"Remainder: {RegisterState.remainder}"),
+                spacing="5",
             )
         )
     )
