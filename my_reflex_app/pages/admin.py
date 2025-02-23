@@ -1,7 +1,7 @@
 import reflex as rx
 from my_reflex_app.templates.page_template import template
 from my_reflex_app.models.users import User
-
+import bcrypt
 
 class AdminState(rx.State):
     username: str = ""
@@ -14,9 +14,10 @@ class AdminState(rx.State):
         """Handle the form submit."""
         self.form_data = form_data
         with rx.session() as session:
+            password = bcrypt.hashpw(self.form_data["password"].encode('utf-8'), bcrypt.gensalt())
             user = User(
                 username=self.form_data["username"],
-                password=self.form_data["password"],
+                password=password,
             )
             session.add(user)
             session.commit()
@@ -27,6 +28,16 @@ class AdminState(rx.State):
         with rx.session() as session:
             users = session.exec(User.select()).all()
             self.users = users
+
+    @rx.event
+    def delete_user(self, user: dict):
+        with rx.session() as session:
+            user: User = session.exec(
+                User.select().where(User.username == user["username"])
+            ).first()
+            session.delete(user)
+            session.commit()
+        self.get_users()
 
 
 def add_user_form():
@@ -105,6 +116,7 @@ def user_table_action_cell(user: User):
                         rx.dialog.close(
                             rx.button(
                                 "Delete",
+                                on_click=lambda: AdminState.delete_user({"username": user.username}),
                             ),
                         ),
                     ),
@@ -121,14 +133,16 @@ def user_table():
                 rx.table.column_header_cell("Actions"),
             )
         ),
-        rx.foreach(
+        rx.table.body(
+            rx.foreach(
             AdminState.users,
             lambda user: rx.table.row(
                 rx.table.cell(user.username),
                 user_table_action_cell(user),
             ),
         )
-        ),
+        )
+    ),
 
 
 @rx.page(route="/admin", on_load=AdminState.get_users)
