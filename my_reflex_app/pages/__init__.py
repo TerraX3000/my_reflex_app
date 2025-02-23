@@ -8,6 +8,7 @@ from my_reflex_app.pages.admin import admin
 from my_reflex_app.pages.upload import upload
 from my_reflex_app.pages.categories import categories
 from my_reflex_app.pages.login import login_page
+from my_reflex_app.pages.initialize import initialize
 
 __all__ = [
     "index", 
@@ -21,4 +22,5 @@ __all__ = [
     "upload",
     "categories",
     "login_page",
+    "initialize",
     ]

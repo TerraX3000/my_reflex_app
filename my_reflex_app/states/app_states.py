@@ -7,6 +7,7 @@ class UserState(rx.State):
     password: str = ""
     is_logged_in: bool = False
     invalid_credentials: bool = False
+    is_default_user_created: bool = False
 
     @rx.event 
     def login(self):
@@ -22,10 +23,7 @@ class UserState(rx.State):
     def validate_user_credentials(self):
         with rx.session() as session:
             user = session.exec(User.select().where(User.username == self.username)).first()
-            print("submitted password", self.password)
-            print("enrypted password", user.password)
             if user:
-                # is_valid_password = bcrypt.checkpw(self.password.encode('utf-8'), user.password)
                 is_valid_password = bcrypt.checkpw(self.password.encode('utf-8'), user.password.encode('utf-8'))
                 self.is_logged_in = is_valid_password
                 self.invalid_credentials = not is_valid_password
@@ -40,9 +38,10 @@ class UserState(rx.State):
         with rx.session() as session:
             users = session.exec(User.select()).all()
             if users:
-                return
+                self.is_default_user_created = False
             else:
                 hashed_password = bcrypt.hashpw("password123".encode('utf-8'), bcrypt.gensalt())
                 default_user = User(username="admin", password=hashed_password)
                 session.add(default_user)
                 session.commit()
+                self.is_default_user_created = True
