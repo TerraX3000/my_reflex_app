@@ -7,6 +7,7 @@ from my_reflex_app.pages.api_routes import api_test, api_transactions
 from my_reflex_app.pages.admin import admin
 from my_reflex_app.pages.upload import upload
 from my_reflex_app.pages.categories import categories
+from my_reflex_app.pages.login import login_page
 
 __all__ = [
     "index", 
@@ -19,4 +20,5 @@ __all__ = [
     "admin", 
     "upload",
     "categories",
+    "login_page",
     ]

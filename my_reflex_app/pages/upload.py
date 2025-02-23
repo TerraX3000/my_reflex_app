@@ -1,6 +1,6 @@
 import reflex as rx 
 from typing import List 
-from my_reflex_app.components.navbar import navbar
+from my_reflex_app.templates.page_template import template
 from my_reflex_app.models.models import Account, Transaction
 import pandas as pd
 import io 
@@ -22,7 +22,6 @@ class UploadState(rx.State):
             self.accounts: List[Account] = session.exec(Account.select()).all()
             self.account_options = []
             for account in self.accounts:
-                print(account.name)
                 self.account_options.append(str(account.name))
     
     def get_selected_account(self):
@@ -62,7 +61,6 @@ class UploadState(rx.State):
     def add_transactions(self):
         account: Account = self.get_selected_account()
         for index, row in self.register_df.iterrows():
-            print(row)
             if account.include_pending_status or row["Status"] != "Pending":
                 transaction = Transaction(
                     account_id=account.id,
@@ -86,7 +84,6 @@ class UploadState(rx.State):
         self.reverse_negative_values()
         self.convert_date()
         self.add_missing_columns()
-        print(self.register_df)
         self.add_transactions()
         
 
@@ -122,10 +119,10 @@ class UploadState(rx.State):
 
 
 @rx.page(route="/upload", on_load=UploadState.get_accounts)
+@template
 def upload():
     return rx.container(
         rx.vstack(
-            navbar(),
             rx.heading("Upload"),
             rx.vstack(
                 rx.select(

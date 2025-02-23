@@ -1,6 +1,6 @@
 import reflex as rx 
 from typing import List 
-from my_reflex_app.components.navbar import navbar
+from my_reflex_app.templates.page_template import template
 from my_reflex_app.models.models import Account, Transaction, Category, TransactionType, Split, SplitType
 import pandas as pd
 import io 
@@ -371,10 +371,10 @@ def show_transaction_table():
 
 
 @rx.page(route="/register", on_load=RegisterState.initialize_state)
+@template
 def register():
     return rx.container(
         rx.vstack(
-            navbar(),
             rx.heading("Register"),
             rx.hstack(
                 rx.select(

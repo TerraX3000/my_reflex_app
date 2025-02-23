@@ -1,8 +1,9 @@
 import reflex as rx 
-from typing import List 
-from my_reflex_app.components.navbar import navbar
+from typing import List , Any
+from my_reflex_app.templates.page_template import template
 from my_reflex_app.models.models import Account, Transaction, Category, Split, TransactionType, SplitType
 import pandas as pd
+
 
 
 class AnalysisState(rx.State):
@@ -47,28 +48,26 @@ class AnalysisState(rx.State):
         # drop split columns
         df = df.drop(['split_category', 'split_sub_category', 'split_amount'], axis=1)
 
+
+
         self.analysis_data = df.values.tolist()
         self.columns = list(df.columns)
         self.analysis_data_loaded = True
         
 
 @rx.page(route="/analysis", on_load=AnalysisState.initialize_state)
+@template
 def analysis():
     return rx.container(
-        rx.vstack(
-            navbar(),
-        ),
         rx.heading("Analysis"),
-        rx.button("Load Analysis Data", on_click=AnalysisState.load_analysis_data),
-        rx.text(f"Analysis data loaded: {AnalysisState.analysis_data_loaded}"),
         rx.cond(
             AnalysisState.analysis_data_loaded,
             rx.data_table(
-            data=AnalysisState.analysis_data,
-            columns=AnalysisState.columns,
-            pagination=True,
-            search=True,
-            sort=True,
+                data=AnalysisState.analysis_data,
+                columns=AnalysisState.columns,
+                pagination=True,
+                search=True,
+                sort=True
             ),
             rx.text("no analysis data")
         ),

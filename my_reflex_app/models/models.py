@@ -28,13 +28,11 @@ class TransactionType:
     amount: float
     bank_status: str
     bank_type: str
-    gross_amount: float
     category_id: int
     account_id: int
     splits: List[SplitType]
     category_name: str = ""
     sub_category_name: str = ""
-
 
 
 # ✅ TimePeriod Enum
@@ -46,6 +44,23 @@ class TimePeriod(PyEnum):
     SEMIANNUALLY = "Semiannually"
     ANNUALLY = "Annually"
 
+@dataclasses.dataclass
+class BudgetType:
+    id: int
+    category_id: int
+    time_period: str
+    amount: float
+    category_name: str = ""
+    sub_category_name: str = ""
+
+@dataclasses.dataclass
+class CategoryType:
+    id: int
+    name: str
+    description: str
+    is_expense_category: bool
+    parent_id: int
+    parent_name: str = ""
 
 # ✅ Category Model
 class Category(rx.Model, table=True):
@@ -74,16 +89,36 @@ class Category(rx.Model, table=True):
         cascade_delete=True,
     )
 
+    def to_dataclass(self) -> CategoryType:
+        return CategoryType(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            is_expense_category=self.is_expense_category,
+            parent_id=self.parent_id,
+            parent_name=self.parent.name if self.parent else "",
+        )
+
 
 # ✅ Budget Model
 class Budget(rx.Model, table=True):
     id: int | None = Field(default=None, primary_key=True)
     category_id: int = Field(foreign_key="category.id", nullable=False)
-    time_period: TimePeriod = Field(sa_column=Enum(TimePeriod))
+    time_period: str = Field(nullable=False)
     amount: float
 
     # Relationships
     category: "Category" = Relationship(back_populates="budgets")
+
+    def to_dataclass(self) -> BudgetType:
+        return BudgetType(
+            id=self.id,
+            category_id=self.category_id,
+            time_period=self.time_period,
+            amount=self.amount,
+            category_name=self.category.parent.name if self.category.parent else self.category.name,
+            sub_category_name=self.category.name if self.category.parent else "",
+        )
 
 
 # ✅ Account Model
@@ -160,7 +195,6 @@ class Transaction(rx.Model, table=True):
             amount=self.amount,
             bank_status=self.bank_status,
             bank_type=self.bank_type,
-            gross_amount=self.gross_amount,
             category_id=self.category_id,
             account_id=self.account_id,
             is_expense_category=is_expense_category,
@@ -187,12 +221,15 @@ class Split(rx.Model, table=True):
             if self.category.parent:
                 category_name = self.category.parent.name
                 sub_category_name = self.category.name
+                is_expense_category = self.category.is_expense_category
             else:
                 category_name = self.category.name
                 sub_category_name = ""
+                is_expense_category = self.category.is_expense_category
         else:
             category_name = ""
             sub_category_name = ""
+            is_expense_category = True
 
         return SplitType(
             id=self.id,
@@ -202,4 +239,5 @@ class Split(rx.Model, table=True):
             amount=self.amount,
             category_name=category_name,
             sub_category_name=sub_category_name,
+            is_expense_category=is_expense_category
         )

@@ -1,6 +1,6 @@
 import reflex as rx
 from typing import List
-from my_reflex_app.components.navbar import navbar
+from my_reflex_app.templates.page_template import template
 from my_reflex_app.models.models import Account
 from dataclasses import dataclass
 
@@ -303,9 +303,9 @@ def account_form_dialog() -> rx.Component:
 
 
 @rx.page(route="/accounts")
+@template
 def accounts():
     return rx.container(
-        navbar(),
         rx.vstack(
             rx.heading("Accounts"),
             rx.dialog.root(

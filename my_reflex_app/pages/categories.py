@@ -1,5 +1,5 @@
 import reflex as rx
-from my_reflex_app.components.navbar import navbar
+from my_reflex_app.templates.page_template import template
 from my_reflex_app.models.models import Category
 from typing import List, Dict
 import sqlalchemy
@@ -264,9 +264,9 @@ def show_categories_table():
 
 
 @rx.page(route="/categories", on_load=CategoryState.get_categories)
+@template
 def categories() -> rx.Component:
     return rx.container(
-        navbar(),
         rx.vstack(
             rx.heading("Categories"),
             rx.hstack(
