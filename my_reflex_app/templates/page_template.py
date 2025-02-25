@@ -18,11 +18,14 @@ def template(
     return rx.cond(
         PageState.is_logged_in,
         rx.box(
-            navbar(),
+            rx.vstack(
+                navbar(),
             rx.container(
                 page(), 
                 size="4"
                 ),
+                align="center",
+            ),
             padding="16px",
         ),
         rx.box(
