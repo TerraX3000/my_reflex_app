@@ -28,6 +28,7 @@ class TransactionType:
     amount: float
     bank_status: str
     bank_type: str
+    memo: str
     category_id: int
     account_id: int
     splits: List[SplitType]
@@ -65,7 +66,7 @@ class CategoryType:
 # ✅ Category Model
 class Category(rx.Model, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(nullable=False, unique=True)
+    name: str = Field(nullable=False)
     description: Optional[str] = None
     is_expense_category: bool = Field(default=True)
     parent_id: Optional[int] = Field(default=None, foreign_key="category.id")
@@ -153,6 +154,7 @@ class Transaction(rx.Model, table=True):
     bank_category: str
     bank_status: str
     bank_type: str
+    memo: str = Field(default="")
     category_id: int = Field(foreign_key="category.id", nullable=True)
     account_id: int = Field(foreign_key="account.id", nullable=False)
     amount: float  # Net amount (after splits)
@@ -195,6 +197,7 @@ class Transaction(rx.Model, table=True):
             amount=self.amount,
             bank_status=self.bank_status,
             bank_type=self.bank_type,
+            memo=self.memo,
             category_id=self.category_id,
             account_id=self.account_id,
             is_expense_category=is_expense_category,
