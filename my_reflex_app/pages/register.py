@@ -43,6 +43,30 @@ class RegisterState(rx.State):
                 return account
             
     @rx.event
+    def update_transaction_memo(self, value, transaction: TransactionType):
+        with rx.session() as session:
+            transaction: Transaction = session.exec(
+                Transaction.select()
+                .where(Transaction.id == transaction.id)
+            ).first()
+            transaction.memo = value
+            session.add(transaction)
+            session.commit()
+        self.load_transactions()
+
+    @rx.event
+    def update_transaction_description(self, value, transaction: TransactionType):
+        with rx.session() as session:
+            transaction: Transaction = session.exec(
+                Transaction.select()
+                .where(Transaction.id == transaction.id)
+            ).first()
+            transaction.description = value
+            session.add(transaction)
+            session.commit()
+        self.load_transactions()
+            
+    @rx.event
     def load_transactions(self):
         account: Account = self.get_selected_account()
         if not all([account, self.start_date, self.end_date]):
@@ -310,7 +334,20 @@ def show_transaction_table():
     def transaction_row(transaction: TransactionType):
         return rx.table.row(
             rx.table.cell(transaction.date),
-            rx.table.cell(transaction.description),
+            rx.table.cell(
+                rx.input(
+                    id=f"description-{transaction.id}",
+                    value=transaction.description,
+                    on_change=lambda description: RegisterState.update_transaction_description(description, transaction),
+                )
+            ),
+            rx.table.cell(
+                rx.input(
+                    id=f"memo-{transaction.id}",
+                    value=transaction.memo,
+                    on_change=lambda memo: RegisterState.update_transaction_memo(memo, transaction),
+                )
+            ),
             rx.table.cell(transaction.amount),
             rx.cond(
                 ~transaction.splits,
@@ -358,6 +395,7 @@ def show_transaction_table():
             rx.table.row(
                 rx.table.column_header_cell("Date"),
                 rx.table.column_header_cell("Description"),
+                rx.table.column_header_cell("Memo"),
                 rx.table.column_header_cell("Amount"),
                 rx.table.column_header_cell("Category"),
                 rx.table.column_header_cell("Sub Category"),
