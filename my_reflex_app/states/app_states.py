@@ -16,21 +16,29 @@ class UserState(rx.State):
     
     @rx.event
     def logout(self):
+        self.username = ""
+        self.password = ""
         self.is_logged_in = False
         return rx.redirect("/")
+    
+    @rx.event
+    def login_on_enter_key(self, value, event: dict):
+        if value and value == "Enter" and not any(list(event.values())):
+            self.validate_user_credentials()
 
     @rx.event
     def validate_user_credentials(self):
-        with rx.session() as session:
-            user = session.exec(User.select().where(User.username == self.username)).first()
-            if user:
-                is_valid_password = bcrypt.checkpw(self.password.encode('utf-8'), user.password.encode('utf-8'))
-                self.is_logged_in = is_valid_password
-                self.invalid_credentials = not is_valid_password
-                return rx.redirect("/")
-            else:
-                self.invalid_credentials = True
-                self.is_logged_in = False
+        if self.username and self.password:
+            with rx.session() as session:
+                user = session.exec(User.select().where(User.username == self.username)).first()
+                if user:
+                    is_valid_password = bcrypt.checkpw(self.password.encode('utf-8'), user.password.encode('utf-8'))
+                    self.is_logged_in = is_valid_password
+                    self.invalid_credentials = not is_valid_password
+                    return rx.redirect("/")
+        self.invalid_credentials = True
+        self.is_logged_in = False
+                    
 
     @rx.event
     def create_default_user(self):

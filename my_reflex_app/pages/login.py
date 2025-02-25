@@ -59,7 +59,8 @@ def login_page() -> rx.Component:
                     type="password",
                     size="3",
                     width="100%",
-                    on_blur=UserState.set_password
+                    on_change=UserState.set_password,
+                    on_key_up=UserState.login_on_enter_key
                 ),
                 spacing="2",
                 width="100%",
